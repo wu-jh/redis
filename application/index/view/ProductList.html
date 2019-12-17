@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        *{
+            padding: 0;
+            margin: 0;
+        }
+        ul,li{
+            list-style: none;
+        }
+        a{
+            color:inherit;
+            text-decoration:none;
+        }
+        .warp{
+            width:500px;
+            min-height:300px;
+            margin:50px auto;
+            border:solid 1px #ccc;
+        }
+
+        .clear::after{
+            content:'';
+            display:block;
+            clear:both;
+        }
+
+        .product{
+            margin:20px 10px;
+        }
+
+        .img{
+            height:100px;
+            width:100px;
+            border:solid 1px #ccc;
+            float:left;
+            text-align: center;
+            line-height: 100px;
+            color:#ccc;
+        }
+
+        .information{
+            float:left;
+            margin-left:10px;
+        }
+
+        .title{
+            font-size:20px;
+        }
+
+        .purchase{
+            float:right;
+            margin-right:20px;
+            line-height:100px;
+        }
+
+        .btn{
+            width:100px;
+            height:35px;
+            background:#ed5223;
+            color:#fff;
+            font-size:13px;
+            font-weight:600;
+            border:none;
+            outline: none;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="warp">
+        {foreach $data as $v}
+            <div class="product clear">
+                <div class="img">假装有图片</div>
+                <div class="information">
+                    <div class="title">名称: {$v.name}</div>
+                    <div class="desc">描述: {$v.content}</div>
+                    <div class="price">价格: {$v.price}</div>
+                    <div class="stock">库存: {$v.stock}</div>
+                </div>
+                <div class="purchase">
+                    <button class="btn" Onclick="ajax({$v.id})">立即购买</button>
+                </div>
+            </div>
+        {/foreach}
+    </div>
+
+    <script src="/static/js/jquery-3.2.1.js"></script>
+    <script>
+        function ajax(id){
+            $.ajax({
+                type:'post',
+                url:'/api/product/skill',
+                data:{
+                    id:id,
+                    number:1,
+                    uid:Math.floor(Math.random()*30),
+                },
+                dataType:'json',
+                success:function(res){
+                    alert(res.data);
+                    if(res.status){
+                        window.location.reload()
+                    }
+                },
+                error:function(res){
+                    console.log(res);
+                    alert('服务器错误')
+                }
+            });
+        }
+    </script>
+</body>
+</html>
