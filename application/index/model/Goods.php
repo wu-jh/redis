@@ -29,4 +29,11 @@ class Goods extends Model
         return $res->toArray();
     }
 
+    //查询参加秒杀的商品
+    public function skill()
+    {
+        $res = $this->where('skill',config('skill_on'))->all();
+        return $res->toArray();
+    }
+
 }

@@ -144,5 +144,5 @@ return [
     'exception_handle'       => '',
 
     'domain_name' => 'www.tp5.com',
-    'skill_number' => 20,
+    'skill_on' => 1,
 ];

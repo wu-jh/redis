@@ -13,7 +13,10 @@
 Route::get('product/find','Product/find');
 //查询所有商品
 Route::get('product/select','Product/select');
-
+//获取所有参加秒杀的商品
+Route::get('product/seckill','Product/getSkill');
+//数据存入redis
+Route::get('product/redis','product/redis');
 
 return [
     

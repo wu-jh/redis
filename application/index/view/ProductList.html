@@ -96,10 +96,9 @@
         function ajax(id){
             $.ajax({
                 type:'post',
-                url:'/api/product/skill',
+                url:'/api/seckill',
                 data:{
-                    id:id,
-                    number:1,
+                    pid:id,
                     uid:Math.floor(Math.random()*30),
                 },
                 dataType:'json',

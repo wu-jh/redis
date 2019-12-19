@@ -2,7 +2,6 @@
 namespace app\index\controller;
 
 use Redis;
-use think\App;
 use think\Controller;
 use think\Request;
 use think\Validate;
@@ -50,11 +49,6 @@ class Product extends Controller
                 'data' => '添加失败'
             ]);
         }
-        //删除之前的缓存
-        $redis = new Redis;
-        $redis->connect('redis',6379);
-        $redis->select(1);
-        $redis->del('productList');
         return json([
             'status' => true,
             'data' => '添加成功'
@@ -104,99 +98,50 @@ class Product extends Controller
 
     }
 
-    //秒杀
-    public function skill(Request $request)
+    //将数据存入redis
+    public function redis()
     {
-        //数据验证
-        $rule = [
-            'id' => 'require|integer',
-            'number' => 'require|integer|min:1|max:1',
-            'uid' => 'require|integer'
-        ];
-        $msg = [
-            'id.require' => '商品id为必填项',
-            'id.integer' => '商品id必须是整数',
-            'number.require' => '购买数量为必填项',
-            'number.integer' => '购买数量必须是整数',
-            'number.min' => '购买数量不能小于1',
-            'number.max' => '每个用户只能购买一件',
-            'uid.require' => '用户id为必填项',
-            'uid.integer' => '用户id必须是整数'
-        ];
-        $data = [
-            'id' => $request->param('id'),
-            'number' => $request->param('number'),
-            'uid' => $request->param('uid'),
-        ];
-        $validate = Validate::make($rule,$msg);
-        if(!$validate->check($data)){
-            return json([
-                'status' => false,
-                'data' => $validate-> getError()
-            ]);
-        }
-        //链接redis
+        //查出参加了秒杀活动的商品
+        $res = (new Goods())->skill();
+        //将数据放入redis中
         $redis = new Redis();
         $redis->connect('redis',6379);
-        $redis->select(1);
-        $key = 'productList_'.$data['id'];
-        if($redis->exists($key)){
-            $res = $redis->hGetAll($key);
-            if(!$res['id']){
-                return json([
-                    'status' => false,
-                    'data' => '商品id不存在'
-                ]);
-            }
-        }else{
-            $res = (new Goods)->find($data['id']);
-            if(!$res){
-                return json([
-                    'status' => false,
-                    'data' => '商品id不存在'
-                ]);
-            }
-            $redis->hMSet($key,$res);
+        $redis->select(0);
+        //将原来缓存链表中的数据清空
+        if($redis->exists('activity_list')){
+            $redis->del('activity_list');
         }
-        //判断该用户是否已经购买
-        if($redis->sIsMember('orderList_'.$res['id'],$data['uid'])){
-            return json([
-                'status' => true,
-                'data' => '每个用户每个商品只能抢购一件'
-            ]);
-        }
-        //判断集合中的个数是否超标
-        if($redis->sCard('orderList_'.$res['id']) <= config('skill_number')){
-            $redis->sAdd('orderList_'.$res['id'],$data['uid']);
-            if(!$redis->exists('order_id')){
-                $redis->set('order_id',-1);
+        //将所有商品信息存储起来,并将键名存入activity_list链表中
+        foreach($res as $v){
+            $key = 'skillProduct_'.$v['id'];
+            $redis->hMSet($key,$v);
+            //创建商品库存链表
+            $k = 'stock_'.$v['id'];
+            if($redis->exists($k)){
+                $redis->del($k);
             }
-            $redis->incr('order_id');
-            $id = $redis->get('order_id');
-            //将订单放入订单集合当中
-            $redis->sAdd('orders','order_'.$id);
-
-            $redis->hMSet('order_'.$id,[
-                'id'=>null,
-                'uid'=>$data['uid'],
-                'pid'=>$res['id'],
-                'price'=>$res['price'],
-                'number'=>$data['number'],
-                'created_at' => time(),
-                'updated_at' => time()
-            ]);
-            $redis->hIncrBy('productList_'.$res['id'],'sale_num',1);
-            $redis->hIncrBy('productList_'.$res['id'],'stock',-1);
-            return json([
-                'status' => true,
-                'data' => '恭喜你,抢购成功!'
-            ]);
-        }else{
-            return json([
-                'status' => false,
-                'data' => '不好意思,你来晚了!'
-            ]);
+            for($i = 1;$i <= $v['stock'];$i++ ){
+                $redis->lpush($k,$i);
+            }
+            //放入参加秒杀商品的集合
+//            $redis->sAdd('activity_list',$key);
+            $redis->rPush('activity_list',$key);
         }
-
+        return '商品存入redis成功';
     }
+
+    //获取所有参加秒杀的商品
+    public function getSkill()
+    {
+        $redis = new Redis();
+        $redis->connect('redis',6379);
+        $redis->select(0);
+        $res = [];
+        $lsize = $redis->lLen('activity_list');
+        foreach($redis->lRange('activity_list',0,$lsize-1) as $v){
+            $res[] = $redis->hGetAll($v);
+        }
+        return $this->fetch('/ProductList',['data'=>$res]);
+    }
+
 }

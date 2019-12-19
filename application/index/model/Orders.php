@@ -16,12 +16,12 @@ class Orders extends Model
     {
         $redis = new Redis();
         $redis->connect('redis',6379);
-        $redis->select(1);
+        $redis->select(0);
         while (true){
-            if($redis->sCard('orders') > 0){
+            if($redis->sCard('order_list') > 0){
 
                 Db::startTrans();
-                foreach($redis->sMembers('orders') as $v){
+                foreach($redis->sMembers('order_list') as $v){
                     $list = $redis->hGetAll($v);
                     try {
                         //将订单数据存入数据库
@@ -51,12 +51,11 @@ class Orders extends Model
                     Db::commit();
                     foreach($arr as $v){
                         $redis->del($v);
-                        $redis->srem('orders',$v);
-//                        $id = $redis->hget($v,'id');
-//                        $redis->hIncrBy('productList_'.$id,'sale_num',1);
-//                        $redis->hIncrBy('productList_'.$id,'stock',-1);
+                        $redis->srem('order_list',$v);
                     }
                 }
+            }else{
+                sleep(10);
             }
         }
     }
